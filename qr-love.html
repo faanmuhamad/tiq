@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>QR Love Generator</title>
+<style>
+  body{margin:0;font-family:system-ui,"Segoe UI",sans-serif;background:#eef6ff;color:#2f4a6d;display:flex;flex-direction:column;align-items:center;padding:24px 16px;gap:14px}
+  h1{font-size:1.3rem;margin:0}
+  .row{display:flex;gap:8px;width:min(100%,520px)}
+  input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid #bcd6f3;font-size:1rem;min-width:0}
+  button{padding:12px 18px;border-radius:12px;border:0;background:#6fa3dc;color:#fff;font-weight:700;font-size:1rem;cursor:pointer}
+  label{font-size:.9rem;display:flex;gap:6px;align-items:center}
+  canvas{width:min(100%,460px);height:auto;filter:drop-shadow(0 16px 30px rgba(70,120,190,.3))}
+  p{max-width:520px;text-align:center;font-size:.9rem;color:#5f7898;margin:0}
+</style>
+</head>
+<body>
+  <h1>💙 QR Love Generator</h1>
+  <div class="row">
+    <input id="url" value="https://faanmuhamad.github.io/tiq/" placeholder="https://username.github.io/fbirthday/">
+    <button id="make">Buat</button>
+  </div>
+  <div class="row" style="justify-content:center;gap:16px">
+    <label><input type="text" id="caption" value="scan me" style="width:130px;flex:none;padding:8px 10px"> teks bawah</label>
+  </div>
+  <canvas id="c" width="1200" height="1150"></canvas>
+  <button id="dl">⬇ Unduh PNG</button>
+  <p>Selalu tes scan pakai kamera HP sebelum dikirim. Simpan file PNG ini, lalu cetak atau kirim sebagai gambar.</p>
+
+<script src="assets/qrcode.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const cv = $("#c"), ctx = cv.getContext("2d");
+const W = cv.width, H = cv.height;
+
+// Use this site's public URL when hosted on GitHub Pages; keep it as default locally.
+if (location.hostname.endsWith(".github.io")) {
+  $("#url").value = location.href.replace(/qr-love\.html.*$/, "");
+}
+
+function heartPath(cx, top, w) {
+  // hati klasik: lebar w, tinggi ~0.92w
+  const h = w * 0.92;
+  ctx.beginPath();
+  ctx.moveTo(cx, top + h * 0.27);
+  ctx.bezierCurveTo(cx, top + h * 0.05, cx - w * 0.12, top - h * 0.02, cx - w * 0.27, top);
+  ctx.bezierCurveTo(cx - w * 0.47, top + h * 0.02, cx - w * 0.52, top + h * 0.22, cx - w * 0.49, top + h * 0.36);
+  ctx.bezierCurveTo(cx - w * 0.45, top + h * 0.58, cx - w * 0.2, top + h * 0.76, cx, top + h);
+  ctx.bezierCurveTo(cx + w * 0.2, top + h * 0.76, cx + w * 0.45, top + h * 0.58, cx + w * 0.49, top + h * 0.36);
+  ctx.bezierCurveTo(cx + w * 0.52, top + h * 0.22, cx + w * 0.47, top + h * 0.02, cx + w * 0.27, top);
+  ctx.bezierCurveTo(cx + w * 0.12, top - h * 0.02, cx, top + h * 0.05, cx, top + h * 0.27);
+  ctx.closePath();
+}
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function smallHeart(cx, cy, s, color) {
+  ctx.save(); ctx.translate(cx, cy); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(0, s * 0.3);
+  ctx.bezierCurveTo(0, 0, -s * 0.5, 0, -s * 0.5, s * 0.3);
+  ctx.bezierCurveTo(-s * 0.5, s * 0.6, 0, s * 0.8, 0, s);
+  ctx.bezierCurveTo(0, s * 0.8, s * 0.5, s * 0.6, s * 0.5, s * 0.3);
+  ctx.bezierCurveTo(s * 0.5, 0, 0, 0, 0, s * 0.3);
+  ctx.fill(); ctx.restore();
+}
+
+function draw() {
+  const url = $("#url").value.trim() || "https://github.com";
+  const qr = qrcode(0, "H"); qr.addData(url); qr.make();
+  const n = qr.getModuleCount();
+
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  // hati besar
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, "#cfe4fb"); g.addColorStop(.55, "#a9cdf5"); g.addColorStop(1, "#86b6ea");
+  heartPath(W / 2, 40, W - 60); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 10; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+
+  // area QR putih
+  const box = 500, bx = (W - box) / 2, by = 300;
+  ctx.save(); ctx.shadowColor = "rgba(50,90,150,.25)"; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
+  rr(bx, by, box, box, 36); ctx.fillStyle = "#fff"; ctx.fill(); ctx.restore();
+
+  const quiet = 34, cell = (box - quiet * 2) / n, ox = bx + quiet, oy = by + quiet;
+  const ink = "#1f3b63";
+  const isFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+  // logo tengah: kosongkan area kecil (~9% luas, aman untuk level H)
+  const hole = Math.round(n * 0.22) | 1, hs = Math.floor((n - hole) / 2);
+  const inHole = (r, c) => r >= hs && r < hs + hole && c >= hs && c < hs + hole;
+
+  ctx.fillStyle = ink;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (!qr.isDark(r, c) || isFinder(r, c) || inHole(r, c)) continue;
+    rr(ox + c * cell + cell * .06, oy + r * cell + cell * .06, cell * .88, cell * .88, cell * .32); ctx.fill();
+  }
+  // finder pattern membulat
+  for (const [r, c] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
+    const x = ox + c * cell, y = oy + r * cell;
+    rr(x, y, cell * 7, cell * 7, cell * 2); ctx.fillStyle = ink; ctx.fill();
+    rr(x + cell, y + cell, cell * 5, cell * 5, cell * 1.4); ctx.fillStyle = "#fff"; ctx.fill();
+    rr(x + cell * 2, y + cell * 2, cell * 3, cell * 3, cell * 1); ctx.fillStyle = ink; ctx.fill();
+  }
+  // hati kecil di tengah
+  const hc = ox + (hs + hole / 2) * cell, hy = oy + (hs + hole / 2) * cell, hsz = hole * cell * 0.85;
+  smallHeart(hc, hy - hsz * 0.52, hsz, "#f094b5");
+
+  // teks
+  const cap = $("#caption").value;
+  if (cap) {
+    ctx.fillStyle = "#ffffff"; ctx.font = "700 46px 'Segoe UI',system-ui,sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(cap, W / 2, by + box + 78);
+  }
+  // hati-hati kecil hiasan
+  [[250, 230, 46], [950, 230, 46], [210, 400, 28], [990, 400, 28]].forEach(([x, y, s]) => smallHeart(x, y, s, "rgba(255,255,255,.85)"));
+}
+
+$("#make").onclick = draw;
+$("#url").addEventListener("keydown", (e) => e.key === "Enter" && draw());
+$("#caption").addEventListener("input", draw);
+$("#dl").onclick = () => {
+  const a = document.createElement("a");
+  a.download = "qr-love.png"; a.href = cv.toDataURL("image/png"); a.click();
+};
+draw();
+</script>
+</body>
+</html>
